@@ -1,0 +1,325 @@
+rabbitmq安装
+sudo apt-get update
+sudo apt-get install erlang-nox
+sudo apt-get install rabbitmq-server
+
+启动、停止、重启、状态rabbitMq命令
+sudo rabbitmq-server start
+sudo rabbitmq-server stop
+sudo rabbitmq-server restart
+sudo rabbitmqctl status
+rabbitmqctl stop
+
+service rabbitmq-server   -detached     //后台启动
+------------------------------------
+添加插件
+rabbitmq-plugins enable rabbitmq_management
+-------------------------------------------
+ps -ef | grep rabbitmq  查看rabbitMq进程
+
+添加admin用户，密码设置为admin。
+ sudo rabbitmqctl add_user admin admin
+
+ 查看当前用户列表
+rabbitmqctl  list_users
+
+赋予权限
+sudo rabbitmqctl set_user_tags admin administrator
+
+赋予virtual host中所有资源的配置、写、读权限以便管理其中的资源
+sudo rabbitmqctl  set_permissions -p / admin '.*' '.*' '.*'
+-------------------------------------------------
+##rabbitmq怎么停止_RabbitMQ 无法正常停止问题未解决
+https://blog.csdn.net/weixin_39796839/article/details/111730957
+---------------------------------------------------
+##解决rabbitmq重启用户丢失问题
+https://www.lucissfer.com/2018/05/07/Centos7%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AERabbitMQ/
+
+===================================================
+redis安装
+
+redis.conf 下 
+daemonize  no改为yes
+bind=127.0.0.1注释掉
+protected-mode 设置为no
+reuqirepass password
+---------------------------------------------------
+redis-server启动
+/usr/local/bin/redis-server /usr/local/redis/redis.conf
+
+redis-cli启动
+/usr/local/bin/redis-cli -h 47.100.78.245 -p 6379 -a password
+
+
+===================================================
+fastdfs安装
+apt-get install cmake
+apt-get install make
+
+解压libfastcommon-1.0.39.tar.gz到/usr/local/fastdfs下
+cd /usr/local/fastdfs/libfastcommon-1.0.39
+./make.sh
+./make.sh install
+
+ln -s /usr/lib64/libfastcommon.so /usr/local/lib/libfastcommon.so
+ln -s /usr/local/lib64/libfdfsclient.so /usr/local/lib/libfdfsclient.so
+ln -s /usr/local/lib64/libfdfsclient.so /usr/lib/libfdfsclient.so
+
+----------------------------------------
+
+解压fastdfs-5.11.tar.gz到/usr/local/fastdfs下
+cd /usr/loca/fastdfa/fastdfs-5.11
+vim make.sh
+-->TARGET_PREFIX=$DESTDIR/usr/local  保存并退出
+./make.sh
+./make.sh install
+
+脚本文件 /etc/init.d/
+配置文件 /etc/fdfs/
+命令 /usr/local/bin
+
+-------------Tracker配置---------
+cd /etc/fdfs/
+cp tracker.conf.sample tracker.conf
+vim tracker.conf
+-->base_path = /fastdfs/tracker 保存
+mkdir -p /fastdfs/tracker
+
+启动fdfs_trackerd
+cd /etc/init.d/
+vim fdfs_trackerd
+-->PRG=/usr/local/bin/fdfs_trackerd 保存
+./fdfs_trackerd start
+
+配置开机自启动
+vim /etc/rc.local
+-->/etc/init.d/fdfs_trackerd start 保存
+
+-------------Storage配置-------------
+cd /etc/fdfs
+cp storage.conf.sample storage.conf
+vim storage.conf
+-->base_path=/fastdfs/storage/base
+-->store_path0=/fastdfs/storage/store
+-->tracker_server = ip:22122      保存
+mkdir -p /fastdfs/storage/base
+mkdir -p /fastdfs/storage/store
+vim /etc/init.d/fdfs_storaged
+-->PRG=/usr/local/bin/fdfs_storaged 保存
+
+启动fdfs_storaged
+/etc/init.d/fdfs_storaged start
+
+---------------Client配置------------
+cd /etc/fdfs
+cp client.conf.sampel client.conf
+vim client.conf
+-->base_path=/fastdfs/client
+-->tracker_server=ip:22122 保存
+mkdir -p /fastdfs/client
+
+上传文件
+/usr/local/bin/fdfs_upload_file /etc/fdfs/client.conf 文件
+
+-------------------------------------------------
+分布式系统FastDFS启动
+
+tracker启动
+/etc/init.d/fdfs_trackerd start
+
+store启动
+/etc/init.d/fdfs_storaged start
+
+命令行上传文件
+/usr/local/bin/fdfs_upload_file/ /etc/fdfs/client.conf + 文件路径
+
+==================================================
+nginx安装
+
+--------------安装fastdfs-nginx-module---------
+fastdfs-nginx-module-1.20.tar.gz解压到/usr/local/fastdfs下
+cd /usr/local/fastdfs/fastdfs-nginx-module-1.20/src
+vim config
+-->ngx_module_incs="/usr/local/include/fastdfs /usr/include/fastcommon/"
+-->CORE_INCS="$CORE_INCS /usr/local/include/fastdfs /usr/include/fastcommon/" 保存
+
+-----------------安装nginx------------------------
+
+安装依赖库
+dpkg -l | grep zlib
+apt-get install openssl libssl-dev
+apt-get install libpcre3 libpcre3-dev
+apt-get install zlib1g-dev
+
+解压nginx-1.15.8.tar.gz到/usr/local/nginx下
+cd /usr/local/nginx
+mkdir -p /var/temp/nginx
+
+./configure \
+--prefix=/usr/local/nginx \
+--pid-path=/var/run/nginx/nginx.pid \
+--lock-path=/var/lock/nginx.lock \
+--error-log-path=/var/log/nginx/error.log \
+--http-log-path=/var/log/nginx/access.log \
+--with-http_gzip_static_module \
+--http-client-body-temp-path=/var/temp/nginx/client \
+--http-proxy-temp-path=/var/temp/nginx/proxy \
+--http-fastcgi-temp-path=/var/temp/nginx/fastcgi \
+--http-uwsgi-temp-path=/var/temp/nginx/uwsgi \
+--http-scgi-temp-path=/var/temp/nginx/scgi \
+--add-module=/usr/local/fastdfs/fastdfs-nginx-module-1.20/src
+
+make
+make install
+
+cd /usr/local/fastdfs/fastdfs-nginx-module-1.20/src
+cp mod_fastdfs.conf /etc/fdfs
+cd /etc/fdfs
+vim mod_fastdfs.conf
+-->tracker_server=192.168.122.11:22122
+-->url_have_group_name = true
+-->store_path0=/fastdfs/storage/store 保存
+cp /usr/local/fastdfs/fastdfs-5.11/conf/http.conf /etc/fdfs/
+cp /usr/local/fastdfs/fastdfs-5.11/conf/mime.types /etc/fdfs/
+创建软链接
+ln -s /usr/local/lib64/libfdfsclient.so /usr/lib64/libfdfsclient.so
+ln -s /fastdfs/storage/store/data/ /fastdfs/storage/store/data/M00
+
+cd /usr/local/nginx/conf
+vim nginx.conf
+-->user root;
+-->listen 8888;
+-->location ~/group[0-9]/M00{
+                    ngx_fastdfs_module;
+      }        保存
+
+-----------重启storege------------------
+/etc/init.d/fdfs_storaged start
+-----------重启nginx----------------------
+/usr/local/nginx/sbin/nginx
+
+---------nginx启动---------------  
+/usr/local/nginx/sbin/nginx
+
+-------------编译过程出错------------------
+https://blog.csdn.net/zzzgd_666/article/details/81911892
+
+--------------nginx重启后报错-----------------
+https://blog.csdn.net/w1316022737/article/details/84917412
+
+=================================================
+安装zookeeper遇到的问题解决
+
+用 ./zkServer.sh start-foreground 启动看看，可以看到日志
+报  Unable to start AdminServer, exiting abnormally 错误
+
+在zoo.cfg中添加了一行配置：
+admin.serverPort=8001
+然后在进行启动。
+这个8080端口难道是zookeeper服务器启动的时候所用的端口吗。
+原来是zookeeper的新版中用了netty做为了内嵌的控制台服务
+
+zookeeper启动
+
+=============================================
+ubuntu20.04-> mysql8.0
+ubuntu18.04->mysql5.7
+安装mysql
+sudo apt update
+sudo apt install mysql-server
+sudo systemctl status mysql
+mysql -uroot -p
+
+use mysql;
+alter USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '12345678'
+flush privileges;
+
+vim /etc/mysql/mysql.conf.d/mysqld.cnf
+bind-address 0.0.0.0
+
+service mysql restart
+
+-> mysql   update user set host='%' where user='root';
+flush privileges;
+
+---------卸载mysql-------------
+https://www.cnblogs.com/duolamengxiong/p/13650684.html
+
+------------安装Mysql5.7-------------
+https://blog.csdn.net/yiyangtime/article/details/84899756
+
+------------安装mysql5.7出错----------------
+https://www.jianshu.com/p/c49206bb8d55
+
+------------解决mysql版本问题----------------
+https://www.jb51.net/article/118538.htm?_=1524370779532
+
+===================================================
+关闭防火墙
+apt install firewalld
+systemctl status firewalld
+systemctl stop firewalld
+systemctl disable firewalld
+
+开启3306端口安全组 公网 47.100.78.245
+============================================
+安装java环境
+https://www.cnblogs.com/zacky31/p/9007954.html
+ 
+===============================================
+tomcat开启
+systemctl enable tomcat9
+tomcat关闭
+systemctl disable tomcat9
+
+tomcat安装
+apt-cache search tomcat
+apt install tomcat9 tomcat9-admin
+--------------------------------------------
+tomcat
+https://www.cnblogs.com/wheel/articles/5914733.html
+
+===============================================
+
+-------nacos非集群启动---------------
+cd /usr/local/nacos/bin
+bash startup.sh -m standalone
+http://47.100.78.245:3333/nacos/index.html
+-----------nacos集群启动（单独启动）-----------
+https://blog.csdn.net/shenhonglei1234/article/details/116126111
+
+（*）bash -f ./startup.sh -p 8848 -m standalone
+
+sh startup.sh -p 3333 -m standalone
+sh startup.sh -p 5555 -m standalone
+访问  http://47.100.78.245:3333/nacos/index.html
+
+--------------开启nacos ---------------------
+/usr/local/nacos/bin/startup.sh -p 8848 -m standalone
+浏览器访问
+ http://47.100.78.245:8848/nacos/index.html
+
+----------nacos与mysql持久化配置------------
+vim /usr/local/nacos/application.properties
+pring.datasource.platform=mysql
+
+db.num=1
+db.url.0=jdbc:mysql://192.168.122.11:3306/nacos_config?characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true
+db.user=root
+db.password=12345678
+
+---------------nacos远程无法访问----------
+
+https://blog.csdn.net/keypanj2ee/article/details/116122579?utm_medium=distribute.pc_aggpage_search_result.none-task-blog-2~aggregatepage~first_rank_ecpm_v1~rank_v31_ecpm-1-116122579.pc_agg_new_rank&utm_term=liunx%E5%90%AF%E5%8A%A8nacos%E5%A4%96%E9%83%A8%E8%AE%BF%E9%97%AE%E4%B8%8D%E5%88%B0&spm=1000.2123.3001.4430
+-----------nacos-1.1.4不支持mysql8.0-------------
+
+https://blog.csdn.net/weixin_43184119/article/details/117264984（不用）
+https://blog.csdn.net/weixin_42302026/article/details/113635408（不用）
+
+==============================================
+ssh安装
+https://www.cnblogs.com/linuxAndMcu/p/10766589.html
+
+-----------开机自启动--------------
+https://blog.csdn.net/fandroid/article/details/86799932
+(*)https://blog.csdn.net/sw1009374593/article/details/84929494
