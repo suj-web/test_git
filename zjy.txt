@@ -1,0 +1,60 @@
+SELECT DISTINCT
+	menu.*, button.*
+FROM
+	(
+		SELECT DISTINCT
+			m1.*, m2.id AS id2,
+			m2.url AS url2,
+			m2.path AS path2,
+			m2.component AS component2,
+			m2.`name` AS name2,
+			m2.iconCls AS iconCls2,
+			m2.keepAlive AS keepAlive2,
+			m2.requireAuth AS requireAuth2,
+			m2.parentId AS parentId2,
+			m2.enabled AS enabled2,
+			r.`name` AS rname,
+			gr.groupId,
+			gr.rid AS grrid,
+			gr.id AS grid
+		FROM
+			t_admin AS ad,
+			t_group AS g,
+			t_group_role AS gr,
+			t_role AS r,
+			t_role_authority AS ra,
+			t_authority AS au,
+			t_authority_menu AS am,
+			t_menu AS m1,
+			t_menu AS m2
+		WHERE
+			m1.id = m2.parentId
+		AND ad.groupId = g.id
+		AND gr.groupId = g.id
+		AND gr.rid = r.id
+		AND r.id = ra.rid
+		AND ra.authorityId = au.id
+		AND am.mid = m2.id
+		AND am.authorityId = au.id
+		AND ad.id = 1
+		AND m2.enabled = TRUE
+		ORDER BY
+			m1.id
+	) AS menu
+LEFT JOIN (
+	SELECT
+		a.id AS aid,
+		a.`name` AS aname,
+		a.iconCls AS aiconCls,
+		a.enabled AS aenabled,
+		ma.menuId AS mamenuId
+	FROM
+		t_menu_action AS ma,
+		t_action AS a,
+		t_authority_action AS aa
+	WHERE
+		ma.actionId = a.id
+	AND aa.actionId = a.id
+) AS button ON menu.id2 = button.mamenuId
+WHERE
+	menu.path IS NOT NULL
