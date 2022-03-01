@@ -201,6 +201,9 @@ vim nginx.conf
 ---------nginx启动---------------  
 /usr/local/nginx/sbin/nginx
 
+----------nginx强制停止----------
+pkill -9 nginx
+
 -------------编译过程出错------------------
 https://blog.csdn.net/zzzgd_666/article/details/81911892
 
@@ -231,7 +234,7 @@ sudo systemctl status mysql
 mysql -uroot -p
 
 use mysql;
-alter USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '12345678'
+alter USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '12345678';
 flush privileges;
 
 vim /etc/mysql/mysql.conf.d/mysqld.cnf
@@ -241,6 +244,9 @@ service mysql restart
 
 -> mysql   update user set host='%' where user='root';
 flush privileges;
+
+mysql8.0误删root用户
+https://www.cnblogs.com/niuben/p/13747981.html
 
 ---------卸载mysql-------------
 https://www.cnblogs.com/duolamengxiong/p/13650684.html
@@ -323,3 +329,47 @@ https://www.cnblogs.com/linuxAndMcu/p/10766589.html
 -----------开机自启动--------------
 https://blog.csdn.net/fandroid/article/details/86799932
 (*)https://blog.csdn.net/sw1009374593/article/details/84929494
+
+
+vue+springboot部署到远程服务器
+vue的request请求中的baseURL:"/api"
+vue.config.js中
+pathRewrite:{
+    '^api/':''
+  }
+
+Login.vue中captchaUrl添加/api
+服务器的nginx进行配置
+server {
+        listen       9090;
+        server_name  localhost;
+        location / {
+#项目在服务器部署的位置
+           root   /home/service/yeb;
+           index index.html index.htm;
+        }
+        location /api/ {
+            rewrite  ^/api/(.*)$ /$1 break;
+            proxy_pass http://47.100.78.245:9091/;
+        }
+        location /ws/ {
+            proxy_pass http://47.100.78.245:9091;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_read_timeout 36000s; #10小时未传输数据则关闭连接
+        }
+    }
+
+springboot项目打成jar包,上传到服务器的/var/lib/tomcat8/webapps/下
+
+
+配置vue项目在nginx跨域访问
+https://www.shangmayuan.com/a/cd146852f3b84927a3812b46.html
+https://blog.csdn.net/u010559460/article/details/105625263
+配置nginx的websocket
+https://www.cnblogs.com/dubayaoyao/p/14573131.html
+https://www.cnblogs.com/zys-blog/p/12035481.html
+
+jar包后端运行
+https://cloud.tencent.com/developer/article/1793305
